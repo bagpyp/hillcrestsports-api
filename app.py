@@ -7,6 +7,6 @@ import pandas as pd
 app = Flask(__name__)
 CORS(app)
 
-@app_route('/')
+@app.route('/')
 def index():
 	return 'Hello, World!'
