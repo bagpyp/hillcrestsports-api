@@ -9,4 +9,12 @@ CORS(app)
 
 @app.route('/')
 def index():
-	return 'Hello, World!'
+	data = pd.read_pickle('picklist.pkl')
+	return data.to_html()
+
+@app.route('/send', methods=['GET','POST'])
+def send():
+	data = request.json
+	picklist = pd.DataFrame(data)
+	picklist.to_pickle('picklist.pkl')
+	return picklist.to_html()
