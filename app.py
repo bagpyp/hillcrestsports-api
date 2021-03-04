@@ -39,7 +39,7 @@ def send():
 
 	# store date
 	with open('date.txt','w') as f:
-		f.write(f'{dt.datetime.now()}')
+		f.write(f'{dt.datetime.now()-dt.timedelta(hours=8)}')
 
 	# fuck with pickle
 	picklist['app_id'] = picklist.id + ' ' + picklist.sku
