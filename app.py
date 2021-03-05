@@ -6,12 +6,14 @@ import pandas as pd
 import datetime as dt
 
 
-ENV = 'prod'
+ENV = 'PROD'
 app = Flask(__name__)
 CORS(app)
 
 if ENV == 'DEV':
 	os.system("export FLASK_APP=app && export FLASK_ENV=development")
+	hours = 0
+else: hours = 8
 
 # another place where building out can break ya/
 prefix_map = {
@@ -23,13 +25,21 @@ prefix_map = {
 
 @app.route('/')
 def index():
-	data = pd.read_pickle('picklist.pkl')
+
+	# get refresh date
 	with open('date.txt') as f:
-		date = f.readlines()[0]
+		date = f.read()
+
+	# check for picked picks
+	with open('picked.json') as f:
+		picked = json.load(f)
+
+	data = pd.read_pickle('picklist.pkl')
+	data['picked'] = data.app_id.map(picked).fillna(False)
+
 	return {
 		'data':json.loads(data.to_json(orient='records')),
-		'date':date.split('.')[0],
-
+		'date':date.split('.')[0]
 	}
 
 @app.route('/send', methods=['POST'])
@@ -39,7 +49,7 @@ def send():
 
 	# store date
 	with open('date.txt','w') as f:
-		f.write(f'{dt.datetime.now()-dt.timedelta(hours=8)}')
+		f.write(f'{dt.datetime.now()-dt.timedelta(hours=hours)}')
 
 	# fuck with pickle
 	picklist['app_id'] = picklist.id + ' ' + picklist.sku
@@ -50,6 +60,27 @@ def send():
 	picklist.to_pickle('picklist.pkl')
 
 	return 'success'
+
+@app.route('/pick', methods=['PUT'])
+def pick():
+	app_id = request.args['app_id']
+
+	# store state info
+	with open('picked.json') as f:
+		picked = json.load(f)
+	if app_id in picked:
+		picked[app_id] = not picked[app_id]
+	else:
+		picked[app_id] = True
+	with open('picked.json','w') as f:
+		json.dump(picked,f)
+
+	return json.dumps(picked[app_id])
+
+	
+
+
+
 
 if __name__ == '__main__':
     app.run(debug=(ENV=='DEV'))
