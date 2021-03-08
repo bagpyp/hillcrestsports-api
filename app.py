@@ -6,7 +6,7 @@ import pandas as pd
 import datetime as dt
 
 
-ENV = 'PROD'
+ENV = 'DEV'
 app = Flask(__name__)
 CORS(app)
 
@@ -23,32 +23,32 @@ prefix_map = {
     'BIGCOMMERCE':'BC'
 }
 
-@app.route('/')
+@app.route('/picklist')
 def index():
 
 	# get refresh date
-	with open('date.txt') as f:
+	with open('picklist/date.txt') as f:
 		date = f.read()
 
 	# check for picked picks
-	with open('picked.json') as f:
+	with open('picklist/picked.json') as f:
 		picked = json.load(f)
 
-	data = pd.read_pickle('picklist.pkl')
+	data = pd.read_pickle('picklist/picklist.pkl')
 	data['picked'] = data.app_id.map(picked).fillna(False)
 
 	return {
 		'data':json.loads(data.to_json(orient='records')),
-		'date':date.split('.')[0]
+		'date':date.split('.')[0].replace(' ','T')
 	}
 
-@app.route('/send', methods=['POST'])
+@app.route('/picklist/send', methods=['POST'])
 def send():
 	data = request.json
 	picklist = pd.DataFrame(data)
 
 	# store date
-	with open('date.txt','w') as f:
+	with open('picklist/date.txt','w') as f:
 		f.write(f'{dt.datetime.now()-dt.timedelta(hours=hours)}')
 
 	# fuck with pickle
@@ -61,18 +61,18 @@ def send():
 
 	return 'success'
 
-@app.route('/pick', methods=['PUT'])
+@app.route('/picklist/pick', methods=['PUT'])
 def pick():
 	app_id = request.args['app_id']
 
 	# store state info
-	with open('picked.json') as f:
+	with open('picklist/picked.json') as f:
 		picked = json.load(f)
 	if app_id in picked:
 		picked[app_id] = not picked[app_id]
 	else:
 		picked[app_id] = True
-	with open('picked.json','w') as f:
+	with open('picklist/picked.json','w') as f:
 		json.dump(picked,f)
 
 	return json.dumps(picked[app_id])
