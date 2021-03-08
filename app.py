@@ -6,7 +6,7 @@ import pandas as pd
 import datetime as dt
 
 
-ENV = 'DEV'
+ENV = 'PROD'
 app = Flask(__name__)
 CORS(app)
 
