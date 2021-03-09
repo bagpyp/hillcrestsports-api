@@ -57,7 +57,7 @@ def send():
 	picklist['app_name'] = (picklist.name.str.title() + ' ' + picklist.year.fillna('')).str.strip(' ')
 	picklist['app_color'] = picklist[['color','alt_color']].apply(lambda x: ', aka '.join(x.dropna()),axis=1)
 	picklist['app_num_other_items'] = picklist.num_items.apply(lambda x: x-1 if x>1 else 0)
-	picklist.to_pickle('picklist.pkl')
+	picklist.to_pickle('picklist/picklist.pkl')
 
 	return 'success'
 
