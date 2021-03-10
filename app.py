@@ -5,8 +5,8 @@ import os
 import pandas as pd
 import datetime as dt
 
-
 ENV = 'PROD'
+
 app = Flask(__name__)
 CORS(app)
 
@@ -24,7 +24,7 @@ prefix_map = {
 }
 
 @app.route('/picklist')
-def index():
+def picklist():
 
 	# get refresh date
 	with open('picklist/date.txt') as f:
@@ -43,7 +43,7 @@ def index():
 	}
 
 @app.route('/picklist/send', methods=['POST'])
-def send():
+def picklist_send():
 	data = request.json
 	picklist = pd.DataFrame(data)
 
@@ -62,7 +62,7 @@ def send():
 	return 'success'
 
 @app.route('/picklist/pick', methods=['PUT'])
-def pick():
+def picklist_pick():
 	app_id = request.args['app_id']
 
 	# store state info
@@ -78,8 +78,32 @@ def pick():
 	return json.dumps(picked[app_id])
 
 	
+@app.route('/reports')
+def reports():
+	# get refresh date
+	with open('reports/date.txt') as f:
+		date = f.read()
+	data = pd.read_pickle('reports/report.pkl')
+
+	return {
+		'data':json.loads(data.to_json(orient='records')),
+		'date':date.split('.')[0].replace(' ','T')
+	}
 
 
+@app.route('/reports/send', methods=['POST'])
+def reports_send():
+	data = request.json
+	reports = pd.DataFrame(data)
+
+	# store date
+	with open('reports/date.txt','w') as f:
+		f.write(f'{dt.datetime.now()-dt.timedelta(hours=hours)}')
+
+	# fuck with pickle
+	reports.to_pickle('reports/report.pkl')
+
+	return 'success'
 
 
 if __name__ == '__main__':
