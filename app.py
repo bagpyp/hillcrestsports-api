@@ -23,43 +23,42 @@ prefix_map = {
     'BIGCOMMERCE':'BC'
 }
 
-@app.route('/picklist')
+@app.route('/picklist',  methods=['GET','POST'])
 def picklist():
+	if request.method == 'GET':
 
-	# get refresh date
-	with open('picklist/date.txt') as f:
-		date = f.read()
+		# get refresh date
+		with open('picklist/date.txt') as f:
+			date = f.read()
 
-	# check for picked picks
-	with open('picklist/picked.json') as f:
-		picked = json.load(f)
+		# check for picked picks
+		with open('picklist/picked.json') as f:
+			picked = json.load(f)
 
-	data = pd.read_pickle('picklist/picklist.pkl')
-	data['picked'] = data.app_id.map(picked).fillna(False)
+		data = pd.read_pickle('picklist/picklist.pkl')
+		data['picked'] = data.app_id.map(picked).fillna(False)
 
-	return {
-		'data':json.loads(data.to_json(orient='records')),
-		'date':date.split('.')[0].replace(' ','T')
-	}
+		return {
+			'data':json.loads(data.to_json(orient='records')),
+			'date':date.split('.')[0].replace(' ','T')
+		}
+	elif request.method == 'POST':
+		data = request.json
+		picklist = pd.DataFrame(data)
 
-@app.route('/picklist/send', methods=['POST'])
-def picklist_send():
-	data = request.json
-	picklist = pd.DataFrame(data)
+		# store date
+		with open('picklist/date.txt','w') as f:
+			f.write(f'{dt.datetime.now()-dt.timedelta(hours=hours)}')
 
-	# store date
-	with open('picklist/date.txt','w') as f:
-		f.write(f'{dt.datetime.now()-dt.timedelta(hours=hours)}')
+		# fuck with pickle
+		picklist['app_id'] = picklist.id + ' ' + picklist.sku
+		picklist['tag'] = picklist.channel.map(prefix_map) + ' ' + picklist.id
+		picklist['app_name'] = (picklist.name.str.title() + ' ' + picklist.year.fillna('')).str.strip(' ')
+		picklist['app_color'] = picklist[['color','alt_color']].apply(lambda x: ', aka '.join(x.dropna()),axis=1)
+		picklist['app_num_other_items'] = picklist.num_items.apply(lambda x: x-1 if x>1 else 0)
+		picklist.to_pickle('picklist/picklist.pkl')
 
-	# fuck with pickle
-	picklist['app_id'] = picklist.id + ' ' + picklist.sku
-	picklist['tag'] = picklist.channel.map(prefix_map) + ' ' + picklist.id
-	picklist['app_name'] = (picklist.name.str.title() + ' ' + picklist.year.fillna('')).str.strip(' ')
-	picklist['app_color'] = picklist[['color','alt_color']].apply(lambda x: ', aka '.join(x.dropna()),axis=1)
-	picklist['app_num_other_items'] = picklist.num_items.apply(lambda x: x-1 if x>1 else 0)
-	picklist.to_pickle('picklist/picklist.pkl')
-
-	return 'success'
+		return 'success'
 
 @app.route('/picklist/pick', methods=['PUT'])
 def picklist_pick():
@@ -78,32 +77,34 @@ def picklist_pick():
 	return json.dumps(picked[app_id])
 
 	
-@app.route('/reports')
+@app.route('/reports', methods = ['GET', 'POST'])
 def reports():
-	# get refresh date
-	with open('reports/date.txt') as f:
-		date = f.read()
-	data = pd.read_pickle('reports/report.pkl')
 
-	return {
-		'data':json.loads(data.to_json(orient='records')),
-		'date':date.split('.')[0].replace(' ','T')
-	}
+	if request.method == 'GET':
 
+		# get refresh date
+		with open('reports/date.txt') as f:
+			date = f.read()
+		data = pd.read_pickle('reports/report.pkl')
 
-@app.route('/reports/send', methods=['POST'])
-def reports_send():
-	data = request.json
-	reports = pd.DataFrame(data)
+		return {
+			'data':json.loads(data.to_json(orient='records')),
+			'date':date.split('.')[0].replace(' ','T')
+		}
+	
+	elif request.method == 'POST':
 
-	# store date
-	with open('reports/date.txt','w') as f:
-		f.write(f'{dt.datetime.now()-dt.timedelta(hours=hours)}')
+		data = request.json
+		reports = pd.DataFrame(data)
 
-	# fuck with pickle
-	reports.to_pickle('reports/report.pkl')
+		# store date
+		with open('reports/date.txt','w') as f:
+			f.write(f'{dt.datetime.now()-dt.timedelta(hours=hours)}')
 
-	return 'success'
+		# fuck with pickle
+		reports.to_pickle('reports/report.pkl')
+
+		return 'success'
 
 
 if __name__ == '__main__':
