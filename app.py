@@ -69,20 +69,21 @@ class Picklist(db.Model):
 		self.app_num_other_items = data['app_num_other_items']
 
 	def json(self):
-		data = {'created_date':self.created_date,
-				'qty':self.qty,
-				'sku':self.sku,
-				'CAT':self.CAT,
-				'BRAND':self.BRAND,
-				'size':self.size,
-				'v_image_url':self.v_image_url,
-				'qty0':self.qty0,
-				'app_id':self.app_id,
-				'tag':self.tag,
-				'app_name':self.app_name,
-				'app_color':self.app_color,
-				'app_num_other_items':self.app_num_other_items}
-		return data
+		return {
+			'created_date':self.created_date,
+			'qty':self.qty,
+			'sku':self.sku,
+			'CAT':self.CAT,
+			'BRAND':self.BRAND,
+			'size':self.size,
+			'v_image_url':self.v_image_url,
+			'qty0':self.qty0,
+			'app_id':self.app_id,
+			'tag':self.tag,
+			'app_name':self.app_name,
+			'app_color':self.app_color,
+			'app_num_other_items':self.app_num_other_items
+		}
 
 class Picked(db.Model):
 	__tablename__ = 'picked'
@@ -93,28 +94,20 @@ class Picked(db.Model):
 	def __init__(self, app_id, picked):
 		self.app_id = app_id
 		self.picked = picked
-		
-@app.route('/')
-def home():
-	return 'Hello, world!'
+
+	def dictionary(self):
+		return {self.app_id:self.picked}
 
 @app.route('/picklist',  methods=['GET','POST'])
 def picklist():
 	if request.method == 'GET':
 
-		date = db.session.query(Date).all()[0].text().split('.')[0].replace(' ','T')
-		data = [_.json() for _ in db.session.query(Picklist).order_by(Picklist.created_date).all()]
-
-		#TODO join picked table to data values
-
-		# # check for picked picks
-		# with open('picklist/picked.json') as f:
-		# 	picked = json.load(f)
-
-		# data = pd.read_pickle('picklist/picklist.pkl')
-		# data['picked'] = data.app_id.map(picked).fillna(False)
-
-		#TODO handle .fillna(False) problem (so that never-toggle picks default to B/W)
+		date = db.session.query(Date).first().text().split('.')[0].replace(' ','T')
+		data = sorted([_.json() for _ in db.session.query(Picklist).all()], key = lambda x: -x['created_date'])
+		picked = {k:v for p in [_.dictionary() for _ in db.session.query(Picked).all()] for k,v in p.items()}
+		data = pd.DataFrame(data)
+		data['picked'] = data.app_id.map(picked).fillna(False)
+		data = json.loads(data.to_json(orient='records'))
 
 		return {
 			'data':data,
@@ -127,6 +120,11 @@ def picklist():
 
 		stored_app_ids = [_[0] for _ in db.session.query(Picklist.app_id).all()]
 		incoming_app_ids = [_['app_id'] for _ in data]
+
+		# delete dangling 'picked' fields
+		for p in db.session.query(Picked).filter(~(Picked.app_id.in_(incoming_app_ids))).all():
+			db.session.delete(p)
+		db.session.commit()
 
 		# add new Picks to DB
 		for d in data:
@@ -149,25 +147,19 @@ def picklist():
 def picklist_pick():
 	app_id = request.args['app_id']
 
-	#TODO read picked table
+	stored_app_ids = [_[0] for _ in db.session.query(Picked.app_id).all()]
 
-	# store state info
-	with open('picklist/picked.json') as f:
-		picked = json.load(f)
-
-	#TODO toggle
-
-	if app_id in picked:
-		picked[app_id] = not picked[app_id]
+	if app_id in stored_app_ids:
+		pick = db.session.query(Picked).filter(Picked.app_id==app_id).first()
+		pick.picked = not pick.picked
+		res = pick.picked
 	else:
-		picked[app_id] = True
+		db.session.add(Picked(app_id,True))
+		res = True
 
-	#TODO store picked table
+	db.session.commit()
 
-	with open('picklist/picked.json','w') as f:
-		json.dump(picked,f)
-
-	return json.dumps(picked[app_id])
+	return json.dumps(res)
 
 if __name__ == '__main__':
     app.run(debug=(ENV=='DEV'))
