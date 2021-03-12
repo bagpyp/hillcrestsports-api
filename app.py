@@ -108,7 +108,7 @@ def picklist():
 		date = db.session.query(Date).all()[0].text().split('.')[0].replace(' ','T')
 
 		#TODO modify query so newer orders first
-		data = [_.json() for _ in db.session.query(Picklist).all()]
+		data = [_.json() for _ in db.session.query(Picklist).order_by(Picklist.created_date).all()]
 
 		#TODO join picked table to data values
 
@@ -130,7 +130,7 @@ def picklist():
 
 		data = request.json
 
-		stored_app_ids = [_[0] for _ in db.session.query(Picklist.app_id).order_by(Picklist.created_date).all()]
+		stored_app_ids = [_[0] for _ in db.session.query(Picklist.app_id).all()]
 		incoming_app_ids = [_['app_id'] for _ in data]
 
 		# add new Picks to DB
