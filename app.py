@@ -145,7 +145,7 @@ def picklist():
 
 		# replace date value with current time
 		db.session.query(Date).delete()
-		db.session.add(Date(str(dt.datetime.now())))
+		db.session.add(Date(str(dt.datetime.now()-dt.timedelta(hours=hours))))
 		db.session.commit()
 
 		return 'OK'
