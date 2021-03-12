@@ -84,9 +84,6 @@ class Picklist(db.Model):
 				'app_num_other_items':self.app_num_other_items}
 		return data
 
-
-	
-
 class Picked(db.Model):
 	__tablename__ = 'picked'
 	_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -106,8 +103,6 @@ def picklist():
 	if request.method == 'GET':
 
 		date = db.session.query(Date).all()[0].text().split('.')[0].replace(' ','T')
-
-		#TODO modify query so newer orders first
 		data = [_.json() for _ in db.session.query(Picklist).order_by(Picklist.created_date).all()]
 
 		#TODO join picked table to data values
